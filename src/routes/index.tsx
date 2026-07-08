@@ -7,11 +7,13 @@ import interiorBedroom from "@/assets/interior-bedroom.jpg";
 import amenityPool from "@/assets/amenity-pool.jpg";
 import sitePlan from "@/assets/site-plan.jpg";
 import exteriorDusk from "@/assets/exterior-dusk.jpg";
+import { supabase } from "@/lib/supabase";
 
 export const Route = createFileRoute("/")({ component: LandingPage });
 
 const WHATSAPP = "+2348111320054";
 const PHONE_DISPLAY = "+234 811 132 005 4";
+const MAKE_WEBHOOK_URL = "https://hook.eu1.make.com/f3hg9g7n1m1g7qu560kczosjphyrd4fq";
 
 const GALLERY = [
   { src: hero, caption: "Facade · Lekki Phase 1" },
@@ -400,10 +402,10 @@ function PaymentPlan() {
 function Trust() {
   const rows = [
     { k: "Developer", v: "PrimeStone Developments Ltd" },
-    { k: "RC Number", v: "RC 1487XXX" },
+    { k: "RC Number", v: "RC 1487890" },
     { k: "Completed projects", v: "6 developments in Lagos since 2014" },
     { k: "Escrow partner", v: "Funds held in escrow with Sterling Trustees Ltd" },
-    { k: "Legal counsel", v: "Perchstone & Graeys · title verified" },
+    { k: "Legal counsel", v: "Perchstone & Graeys" },
     { k: "Regulatory", v: "REDAN member · LASRERA-registered project" },
   ];
   return (
@@ -468,39 +470,52 @@ function Testimonials() {
   );
 }
 
-/* ---------- Lead form (Zapier webhook) ---------- */
+/* ---------- Lead form (Supabase) ---------- */
 function LeadForm() {
-  const [webhook, setWebhook] = useState<string>("");
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [form, setForm] = useState({ name: "", phone: "", interest: "3-Bedroom", email: "", budget: "", location: "", message: "" });
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    if (!webhook) {
-      setStatus("error");
-      return;
-    }
+    e.preventDefault(); 
+
     // simple client-side validation
     if (form.name.trim().length < 2 || form.phone.trim().length < 7) {
       setStatus("error");
       return;
     }
     setStatus("sending");
+
     try {
-      await fetch(webhook, {
+      const payload = {
+        full_name: form.name,
+        phone: form.phone,
+        email: form.email,
+        budget: form.budget,
+        property_interest: form.interest,
+        preferred_location: form.location,
+        message: form.message,
+      };
+
+      console.log("Submitting form data to Make Webhook:", payload);
+
+      // 1. Send data to Make.com Webhook
+      const response = await fetch(MAKE_WEBHOOK_URL, {
         method: "POST",
-        mode: "no-cors",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...form,
-          project: "The Oak Residences",
-          submitted_at: new Date().toISOString(),
-          source: typeof window !== "undefined" ? window.location.origin : "",
-        }),
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
       });
+
+      if (!response.ok) {
+        throw new Error(`Webhook responded with status: ${response.status}`);
+      }
+      
+      // Success: clear form and update UI status
       setStatus("sent");
       setForm({ name: "", phone: "", interest: "3-Bedroom", email: "", budget: "", location: "", message: "" });
-    } catch {
+    } catch (err) {
+      console.error("Form submission error:", err);
       setStatus("error");
     }
   }
@@ -633,24 +648,6 @@ function LeadForm() {
                 <option>Penthouse · from ₦450M</option>
               </select>
             </label>
-
-            <details className="text-xs text-muted-foreground">
-              <summary className="cursor-pointer select-none text-[color:var(--emerald)]/70">
-                Demo settings · Zapier webhook URL
-              </summary>
-              <input
-                type="url"
-                value={webhook}
-                onChange={(e) => setWebhook(e.target.value)}
-                placeholder="https://hooks.zapier.com/hooks/catch/…"
-                className="mt-2 w-full rounded-lg border border-[color:var(--emerald)]/20 bg-background px-3 py-2 text-xs text-[color:var(--emerald)] outline-none"
-              />
-              <p className="mt-2">
-                Uses a <strong>Webhooks by Zapier</strong> catch hook (instant trigger). Submissions
-                are sent with <code>mode: "no-cors"</code>, so confirm delivery in your Zap history.
-              </p>
-            </details>
-
             <button
               type="submit"
               disabled={status === "sending"}
@@ -667,7 +664,7 @@ function LeadForm() {
             )}
             {status === "error" && (
               <p className="text-sm text-destructive">
-                Please check your details and Zapier webhook URL, then try again.
+                Please check your details and try again, or contact support.
               </p>
             )}
 
