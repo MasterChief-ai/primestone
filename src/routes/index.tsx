@@ -626,7 +626,7 @@ function LeadForm() {
               <input
                 type="message"
                 required
-                maxLength={20}
+                maxLength={4000}
                 value={form.message}
                 onChange={(e) => setForm({ ...form, message: e.target.value })}
                 className="mt-1 w-full rounded-lg border border-[color:var(--emerald)]/20 bg-background px-4 py-3 text-[color:var(--emerald)] outline-none transition focus:border-[color:var(--bronze)] focus:ring-2 focus:ring-[color:var(--bronze)]/30"
